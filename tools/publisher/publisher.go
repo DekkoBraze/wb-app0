@@ -1,15 +1,15 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
-	"io"
 
 	"github.com/nats-io/stan.go"
 )
 
 func main() {
-	jsonFile, err := os.Open("model.json")
+	jsonFile, err := os.Open("wrong.json")
 	if err != nil {
 		log.Print(err)
 	}

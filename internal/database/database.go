@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"log"
 
 	_ "github.com/lib/pq"
 )
@@ -12,6 +11,11 @@ const (
 	dbPassword = "admin"
 	dbName     = "wbdb0"
 )
+
+type dbItem struct {
+	id int
+	data []byte
+}
 
 type Order struct {
 	Order_uid          string   `json:"order_uid"`
@@ -85,7 +89,25 @@ func (database *Database) Init() (err error) {
 
 func (database *Database) InsertJson(data []byte) (err error) {
 	_, err = database.cursor.Exec(`INSERT INTO Orders (data) VALUES ($1)`, data)
-	log.Print("data in db!")
+
+	return
+}
+
+func (database *Database) SelectOrders() (orders [][]byte, err error) {
+	rows, err := database.cursor.Query(`SELECT * FROM Orders`)
+	if err != nil {
+        return
+    }
+    defer rows.Close()
+
+    for rows.Next(){
+        dbItem := dbItem{}
+        err = rows.Scan(&dbItem.id, &dbItem.data)
+        if err != nil {
+			return
+		}
+        orders = append(orders, dbItem.data)
+    }
 
 	return
 }

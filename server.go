@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	_ "fmt"
 	"log"
 	"net/http"
 
 	cachePkg "app0/internal/cache"
 	dbPkg "app0/internal/database"
+
 	"github.com/gorilla/mux"
 	"github.com/nats-io/stan.go"
 )
@@ -21,15 +21,29 @@ func main() {
 		log.Print(err)
 	}
 
+	var order dbPkg.Order
+	dbOrders, err := db.SelectOrders()
+	if err != nil {
+		log.Print(err)
+	}
+	for _, byteOrder := range dbOrders {
+		json.Unmarshal(byteOrder, &order)
+		cache.Set(order)
+	}
+
+	//cache.PrintItems()
+
 	sc, err := stan.Connect("test-cluster", "test-client")
 	if err != nil {
 		log.Print(err)
 	}
 
-	var order dbPkg.Order
-
 	_, err = sc.Subscribe("app0", func(m *stan.Msg) {
-		json.Unmarshal(m.Data, &order)
+		err = json.Unmarshal(m.Data, &order)
+		if err != nil {
+			log.Print(err)
+		} 
+		log.Print(order)
 		cache.Set(order)
 		err := db.InsertJson(m.Data)
 		if err != nil {
@@ -41,7 +55,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/get_order/{orderId}", get_order).Methods("GET", "OPTIONS")
+	router.HandleFunc("/getOrder/{orderId}", get_order).Methods("GET", "OPTIONS")
 	http.Handle("/", router)
 
 	err = http.ListenAndServe(":8000", nil)

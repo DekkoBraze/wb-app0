@@ -23,12 +23,10 @@ func New() *Cache {
 	return &cache
 }
 
-func (c *Cache) Set(orders dbPkg.Order) {
+func (c *Cache) Set(order dbPkg.Order) {
 	c.Lock()
 	defer c.Unlock()
-
-	c.items[orders.Order_uid] = orders
-	log.Print("data in cache!")
+	c.items[order.Order_uid] = order
 }
 
 func (c *Cache) Get(key string) (item dbPkg.Order, isFound bool) {
@@ -50,4 +48,10 @@ func (c *Cache) Delete(key string) (err error) {
 	delete(c.items, key)
 
 	return
+}
+
+func (c *Cache) PrintItems() {
+	for _, item := range c.items {
+		log.Println(item)
+	}
 }
