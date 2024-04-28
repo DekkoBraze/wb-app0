@@ -13,7 +13,7 @@ const (
 	dbName     = "wbdb0"
 )
 
-type Orders struct {
+type Order struct {
 	Order_uid          string   `json:"order_uid"`
 	Track_number       string   `json:"track_number"`
 	Entry              string   `json:"entry"`
@@ -85,7 +85,7 @@ func (database *Database) Init() (err error) {
 
 func (database *Database) InsertJson(data []byte) (err error) {
 	_, err = database.cursor.Exec(`INSERT INTO Orders (data) VALUES ($1)`, data)
-	log.Print("complete")
+	log.Print("data in db!")
 
 	return
 }

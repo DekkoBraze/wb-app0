@@ -1,20 +1,23 @@
 package main
 
 import (
-	"log"
-	_ "fmt"
-	"os"
-	"io"
 	"encoding/json"
+	_ "fmt"
+	"log"
+	"net/http"
 
+	cachePkg "app0/internal/cache"
 	dbPkg "app0/internal/database"
+	"github.com/gorilla/mux"
 	"github.com/nats-io/stan.go"
 )
+
+var cache = cachePkg.New()
 
 func main() {
 	db := dbPkg.Database{}
 	err := db.Init()
-	if (err != nil) {
+	if err != nil {
 		log.Print(err)
 	}
 
@@ -23,34 +26,39 @@ func main() {
 		log.Print(err)
 	}
 
-	var orders dbPkg.Orders
+	var order dbPkg.Order
 
-	sub, err := sc.Subscribe("app0", func(m *stan.Msg) {
-		json.Unmarshal(m.Data, &orders)
+	_, err = sc.Subscribe("app0", func(m *stan.Msg) {
+		json.Unmarshal(m.Data, &order)
+		cache.Set(order)
 		err := db.InsertJson(m.Data)
 		if err != nil {
 			log.Print(err)
 		}
-	}, stan.StartWithLastReceived())
+	})
 	if err != nil {
 		log.Print(err)
 	}
 
-	jsonFile, err := os.Open("model.json")
-	if err != nil {
-		log.Print(err)
-	}
-	defer jsonFile.Close()
+	router := mux.NewRouter()
+	router.HandleFunc("/get_order/{orderId}", get_order).Methods("GET", "OPTIONS")
+	http.Handle("/", router)
 
-	byteData, err := io.ReadAll(jsonFile)
+	err = http.ListenAndServe(":8000", nil)
 	if err != nil {
-		log.Print(err)
+		log.Fatal("ListenAndServe: ", err)
 	}
+}
 
-	err = sc.Publish("app0", byteData)
-	if err != nil {
-		log.Print(err)
+func get_order(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	order_uid := vars["orderId"]
+	sendedOrder, orderIsFound := cache.Get(order_uid)
+	if !orderIsFound {
+		log.Print("cant find any orders!")
+		return
 	}
-	
-	sub.Unsubscribe()
+	json.NewEncoder(w).Encode(sendedOrder)
 }
