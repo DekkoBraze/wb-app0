@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	jsonFile, err := os.Open("wrong.json")
+	jsonFile, err := os.Open("model.json")
 	if err != nil {
 		log.Print(err)
 	}

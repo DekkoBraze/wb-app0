@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"reflect"
 
 	cachePkg "app0/internal/cache"
 	dbPkg "app0/internal/database"
@@ -31,23 +32,32 @@ func main() {
 		cache.Set(order)
 	}
 
-	//cache.PrintItems()
-
 	sc, err := stan.Connect("test-cluster", "test-client")
 	if err != nil {
 		log.Print(err)
 	}
 
 	_, err = sc.Subscribe("app0", func(m *stan.Msg) {
-		err = json.Unmarshal(m.Data, &order)
+		var newOrder dbPkg.Order
+		err = json.Unmarshal(m.Data, &newOrder)
 		if err != nil {
 			log.Print(err)
-		} 
-		log.Print(order)
-		cache.Set(order)
-		err := db.InsertJson(m.Data)
-		if err != nil {
-			log.Print(err)
+		}
+		emptyItems := []dbPkg.Item{}
+		emptyPayment := dbPkg.Payment{}
+		emptyDelivery := dbPkg.Delivery{}
+		if newOrder.Order_uid == "" ||
+			reflect.DeepEqual(newOrder.Items, emptyItems) ||
+			reflect.DeepEqual(newOrder.Payment, emptyPayment) ||
+			reflect.DeepEqual(newOrder.Delivery, emptyDelivery) {
+			log.Print("wrong json!")
+		} else {
+			//log.Print(newOrder)
+			cache.Set(newOrder)
+			err := db.InsertOrder(m.Data, newOrder)
+			if err != nil {
+				log.Print(err)
+			}
 		}
 	})
 	if err != nil {

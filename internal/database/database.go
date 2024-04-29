@@ -2,7 +2,8 @@ package database
 
 import (
 	"database/sql"
-
+	"time"
+	
 	_ "github.com/lib/pq"
 )
 
@@ -30,7 +31,7 @@ type Order struct {
 	Delivery_service   string   `json:"delivery_service"`
 	Shardkey           string   `json:"shardkey"`
 	Sm_id              int      `json:"sm_id"`
-	Date_created       string   `json:"date_created"`
+	Date_created       time.Time   `json:"date_created"`
 	Oof_shard          string   `json:"oof_shard"`
 }
 
@@ -82,13 +83,13 @@ func (database *Database) Init() (err error) {
 		return
 	}
 
-	_, err = database.cursor.Exec(`CREATE TABLE IF NOT EXISTS Orders (id serial PRIMARY KEY, data JSONB);`)
+	_, err = database.cursor.Exec(`CREATE TABLE IF NOT EXISTS Orders (order_uid CHAR(64) PRIMARY KEY, data JSONB);`)
 
 	return
 }
 
-func (database *Database) InsertJson(data []byte) (err error) {
-	_, err = database.cursor.Exec(`INSERT INTO Orders (data) VALUES ($1)`, data)
+func (database *Database) InsertOrder(byteData []byte, unmarshaledData Order) (err error) {
+	_, err = database.cursor.Exec(`INSERT INTO Orders (order_uid, data) VALUES ($1, $2)`, unmarshaledData.Order_uid, byteData)
 
 	return
 }
