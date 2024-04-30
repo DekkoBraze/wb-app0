@@ -7,6 +7,7 @@ import (
 
 	cachePkg "app0/internal/cache"
 	dbPkg "app0/internal/database"
+	"app0/internal/structs"
 	"app0/internal/subscriber"
 
 	"github.com/gorilla/mux"
@@ -50,16 +51,26 @@ func main() {
 
 // Выдача json заказа
 func getOrder(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 	w.Header().Set("Content-Type", "application/json")
+
+	type Response struct {
+		Message string        `json:"message"`
+		Order   structs.Order `json:"order"`
+	}
 
 	log.Print("Received json order request...")
 	vars := mux.Vars(r)
 	order_uid := vars["orderId"]
 	sendedOrder, orderIsFound := cache.Get(order_uid)
 	if !orderIsFound {
+		var response = Response{Message: "ORDERS_NOT_FOUND", Order: structs.Order{}}
+		json.NewEncoder(w).Encode(response)
 		log.Print("No orders were found!")
 		return
 	}
-	json.NewEncoder(w).Encode(sendedOrder)
+
+	var response = Response{Message: "OK", Order: sendedOrder}
+	json.NewEncoder(w).Encode(response)
 	log.Print("The json order has been sent.")
 }
